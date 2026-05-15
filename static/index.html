@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit订阅站</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f5f5f5; }
+
+/* Sidebar */
+.sidebar { width: 220px; background: #1a1a2e; color: #fff; padding: 20px 0; flex-shrink: 0; display: flex; flex-direction: column; }
+.sidebar h1 { font-size: 16px; padding: 0 20px 20px; border-bottom: 1px solid #333; margin-bottom: 10px; }
+.nav-item { padding: 12px 20px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 8px; }
+.nav-item:hover { background: #16213e; }
+.nav-item.active { background: #0f3460; border-left: 3px solid #e94560; }
+
+/* Main content */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.content { flex: 1; padding: 24px; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* Config page */
+.config-form { max-width: 600px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 6px; color: #333; }
+.form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.form-group textarea { height: 80px; resize: vertical; }
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; }
+.checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 4px; }
+.switch-group { display: flex; gap: 24px; margin-top: 8px; }
+.switch-group label { display: flex; align-items: center; gap: 6px; font-weight: normal; }
+.btn-start { display: block; width: 100%; padding: 16px; font-size: 18px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; margin-top: 24px; transition: background 0.2s; }
+.btn-start.start { background: #e94560; color: #fff; }
+.btn-start.start:hover { background: #d63851; }
+.btn-start.stop { background: #333; color: #fff; }
+.btn-start.stop:hover { background: #555; }
+
+/* Posts page */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid #ddd; margin-bottom: 16px; }
+.tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; }
+.tab.active { border-bottom-color: #e94560; color: #e94560; }
+.tab .badge { background: #eee; border-radius: 10px; padding: 2px 8px; font-size: 12px; margin-left: 4px; }
+
+.posts-container { display: flex; gap: 0; height: calc(100vh - 160px); }
+.posts-list { flex: 1; overflow-y: auto; }
+.post-detail-panel { width: 0; overflow: hidden; transition: width 0.3s; border-left: 1px solid #ddd; background: #fff; }
+.post-detail-panel.open { width: 50%; padding: 24px; overflow-y: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+tr:hover { background: #f9f9f9; }
+tr.selected { background: #fce4ec; border-left: 3px solid #e94560; }
+.btn { padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.btn-sync { background: #4ecdc4; color: #fff; }
+.btn-delete { background: #ff6b6b; color: #fff; }
+.btn-publish { background: #45b7d1; color: #fff; }
+.btn:hover { opacity: 0.85; }
+
+/* Detail panel */
+.detail-title { font-size: 22px; font-weight: 700; margin-bottom: 16px; line-height: 1.4; }
+.detail-meta { color: #666; font-size: 13px; margin-bottom: 16px; display: flex; gap: 16px; }
+.detail-body { line-height: 1.8; white-space: pre-wrap; font-size: 14px; }
+.btn-copy { background: #e94560; color: #fff; }
+.btn-copy:hover { background: #d63851; }
+
+/* Logs */
+.log-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.log-status { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.log-status.completed { background: #d4edda; color: #155724; }
+.log-status.running { background: #fff3cd; color: #856404; }
+.log-status.error { background: #f8d7da; color: #721c24; }
+
+/* Pagination */
+.pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+.pagination button { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+.pagination button.active { background: #e94560; color: #fff; border-color: #e94560; }
+.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.status-indicator { font-size: 12px; color: #4ecdc4; margin-top: 8px; padding: 0 20px; }
+.sort-arrows { display: inline-flex; flex-direction: column; line-height: 1; margin-left: 4px; vertical-align: middle; }
+.sort-arrows span { cursor: pointer; font-size: 12px; color: #999; padding: 2px 4px; transition: color 0.2s; user-select: none; }
+.sort-arrows span:hover { color: #e94560; }
+.sort-arrows span.active { color: #e94560; font-weight: bold; }
+
+/* Source filter */
+.source-filter { padding: 8px 0 12px; }
+.source-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.source-chip { padding: 4px 12px; border: 1px solid #ddd; border-radius: 16px; font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; }
+.source-chip:hover { border-color: #e94560; }
+.source-chip.selected { background: #e94560; color: #fff; border-color: #e94560; }
+
+/* Toggle button */
+.toggle-btn { display: inline-flex; border: 1px solid #ddd; border-radius: 16px; overflow: hidden; flex-shrink: 0; }
+.toggle-opt { padding: 4px 12px; font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; }
+.toggle-opt.active { background: #e94560; color: #fff; }
+.toggle-opt:not(.active):hover { background: #f0f0f0; }
+
+/* Fav tag chips */
+.fav-tag { padding: 4px 12px; border: 1px solid #ddd; border-radius: 16px; font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; }
+.fav-tag.selected { background: #e94560; color: #fff; border-color: #e94560; }
+.fav-tag:hover { border-color: #e94560; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h1>Reddit订阅站</h1>
+    <div class="nav-item active" data-page="posts">&#128196; 帖子目录</div>
+    <div class="nav-item" data-page="config">&#9881; 爬取配置</div>
+    <div class="nav-item" data-page="logs">&#128203; 爬取日志</div>
+    <div class="status-indicator" id="statusIndicator"></div>
+    <div style="padding:20px;text-align:center;margin-top:auto;">
+        <img src="/static/qrcode.jpeg" alt="二维码" style="width:100%;border-radius:8px;">
+        <p style="color:#fff;font-size:13px;margin-top:8px;">微信关注我,掌握更多动态</p>
+    </div>
+</div>
+
+<div class="main">
+    <div class="content">
+        <!-- Config Page -->
+        <div class="page" id="page-config">
+            <h2 style="margin-bottom:20px;">爬取配置</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label>爬取间隔 (分钟)</label>
+                    <input type="number" id="cfgInterval" value="60" min="1">
+                </div>
+                <div class="form-group">
+                    <label>爬取目标 (多个用逗号分隔，如: python,javascript,webdev)</label>
+                    <textarea id="cfgTargets" placeholder="python,javascript"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>每个目标爬取数量</label>
+                    <input type="number" id="cfgLimit" value="100" min="1">
+                </div>
+                <div class="form-group">
+                    <label>帖子类型过滤</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" value="text" checked> 纯文本</label>
+                        <label><input type="checkbox" value="image" checked> 图片</label>
+                        <label><input type="checkbox" value="video" checked> 视频</label>
+                        <label><input type="checkbox" value="gallery" checked> 画廊</label>
+                        <label><input type="checkbox" value="link" checked> 链接</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>其他选项</label>
+                    <div class="switch-group">
+                        <label><input type="checkbox" id="cfgImages" checked> 抓取图片</label>
+                        <label><input type="checkbox" id="cfgVideos"> 抓取视频</label>
+                        <label><input type="checkbox" id="cfgComments" checked> 抓取评论</label>
+                    </div>
+                </div>
+                <button class="btn-start start" id="btnScrape" onclick="toggleScrape()">开始爬取</button>
+            </div>
+        </div>
+
+        <!-- Posts Page -->
+        <div class="page active" id="page-posts">
+            <h2 style="margin-bottom:16px;">帖子目录</h2>
+            <div class="tabs" style="display:flex;align-items:center;">
+                <div class="tab active" data-status="pending">待筛选 <span class="badge" id="count-pending">0</span></div>
+                <div class="tab" data-status="deleted">已删除 <span class="badge" id="count-deleted">0</span></div>
+                <div class="tab" data-status="favorites">我的收藏 <span class="badge" id="count-favorites">0</span></div>
+                <div style="margin-left:auto;">
+                    <input type="text" id="searchInput" placeholder="搜索标题..." style="padding:6px 12px;border:1px solid #ddd;border-radius:16px;font-size:13px;width:180px;outline:none;" />
+                </div>
+            </div>
+            <div class="source-filter" id="sourceFilter" style="display:none;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="toggle-btn" id="selectModeToggle">
+                        <span class="toggle-opt active" data-mode="single" onclick="setSelectMode('single')">单选</span>
+                        <span class="toggle-opt" data-mode="multi" onclick="setSelectMode('multi')">多选</span>
+                    </div>
+                    <div class="source-chips" id="sourceChips"></div>
+                </div>
+            </div>
+            <div class="posts-container">
+                <div class="posts-list">
+                    <table>
+                        <thead id="postsHead">
+                            <tr>
+                                <th>#</th>
+                                <th>来源</th>
+                                <th>标题</th>
+                                <th>作者</th>
+                                <th>发布时间</th>
+                                <th>爬取时间</th>
+                                <th>字数 <span class="sort-arrows" data-field="word_count"><span class="arrow-up">&#9650;</span><span class="arrow-down">&#9660;</span></span></th>
+                                <th>点赞 <span class="sort-arrows" data-field="score"><span class="arrow-up">&#9650;</span><span class="arrow-down">&#9660;</span></span></th>
+                                <th>评论 <span class="sort-arrows" data-field="num_comments"><span class="arrow-up">&#9650;</span><span class="arrow-down">&#9660;</span></span></th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="postsBody"></tbody>
+                    </table>
+                    <div class="pagination" id="pagination"></div>
+                </div>
+                <div class="post-detail-panel" id="detailPanel">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+                        <button class="btn btn-delete" style="padding:6px 12px;" onclick="detailAction('delete')">一键删除</button>
+                        <button class="btn" id="btnFav" style="padding:6px 12px;background:#ffc107;color:#333;font-size:16px;" onclick="openFavModal()" title="收藏">&#9733;</button>
+                        <button class="btn" style="background:#666;color:#fff;padding:6px 12px;margin-left:auto;" onclick="closeDetail()">收起 &times;</button>
+                    </div>
+                    <h2 class="detail-title" id="detailTitle"></h2>
+                    <div class="detail-meta" id="detailMeta"></div>
+                    <div class="detail-body" id="detailBody"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Page -->
+        <div class="page" id="page-logs">
+            <h2 style="margin-bottom:16px;">爬取日志</h2>
+            <div id="logsContainer"></div>
+            <div class="pagination" id="logsPagination"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Favorite Modal -->
+<div id="favModal" data-modal style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:24px;width:400px;max-width:90vw;">
+        <h3 style="margin:0 0 16px;">收藏帖子</h3>
+        <p style="margin:0 0 8px;font-size:13px;color:#666;">选择标签：</p>
+        <div id="favTagChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <input id="favTagInput" type="text" placeholder="输入新标签，按Enter添加" style="flex:1;padding:6px 12px;border:1px solid #ddd;border-radius:4px;">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="closeFavModal()" style="padding:6px 16px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;">取消</button>
+            <button onclick="confirmFavorite()" style="padding:6px 16px;border:none;background:#e94560;color:#fff;border-radius:4px;cursor:pointer;">确认收藏</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = '';
+let currentStatus = 'pending';
+let currentPage = 1;
+let isRunning = false;
+let currentPost = null;
+let currentPostsList = [];
+let sortBy = 'scraped_at';
+let sortOrder = 'desc';
+let selectedSources = [];
+let selectMode = 'single';
+let searchKeyword = '';
+
+// Search input
+document.getElementById('searchInput').addEventListener('input', debounce(function(e) {
+    searchKeyword = e.target.value.trim();
+    currentPage = 1;
+    loadPosts();
+}, 300));
+function debounce(fn, delay) {
+    let timer;
+    return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); };
+}
+
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + item.dataset.page).classList.add('active');
+        if (item.dataset.page === 'posts') loadPosts();
+        if (item.dataset.page === 'logs') loadLogs();
+        if (item.dataset.page === 'config') loadConfig();
+    });
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentStatus = tab.dataset.status;
+        currentPage = 1;
+        closeDetail();
+        updateSourceFilterVisibility();
+        if (currentStatus === 'favorites') loadFavorites();
+        else loadPosts();
+    });
+});
+
+function updateSourceFilterVisibility() {
+    document.getElementById('sourceFilter').style.display =
+        currentStatus === 'pending' ? '' : 'none';
+}
+
+async function loadSources() {
+    const [sourcesRes, prefRes] = await Promise.all([
+        fetch(API + '/api/sources'),
+        fetch(API + '/api/preferences/sources')
+    ]);
+    const sources = await sourcesRes.json();
+    const prefs = await prefRes.json();
+    selectedSources = prefs.selected_sources || [];
+    selectMode = prefs.select_mode || 'single';
+    // Update toggle UI
+    document.querySelectorAll('#selectModeToggle .toggle-opt').forEach(el => {
+        el.classList.toggle('active', el.dataset.mode === selectMode);
+    });
+    const container = document.getElementById('sourceChips');
+    container.innerHTML = sources.map(s =>
+        `<span class="source-chip${selectedSources.includes(s) ? ' selected' : ''}" data-source="${esc(s)}" onclick="toggleSource(this)">${esc(s)}</span>`
+    ).join('');
+}
+
+function setSelectMode(mode) {
+    selectMode = mode;
+    document.querySelectorAll('#selectModeToggle .toggle-opt').forEach(el => {
+        el.classList.toggle('active', el.dataset.mode === mode);
+    });
+    // If switching to single and multiple selected, keep only the first
+    if (mode === 'single' && selectedSources.length > 1) {
+        selectedSources = [selectedSources[0]];
+        document.querySelectorAll('.source-chip').forEach(el => {
+            el.classList.toggle('selected', selectedSources.includes(el.dataset.source));
+        });
+        currentPage = 1;
+        loadPosts();
+    }
+    savePreferences();
+}
+
+function toggleSource(el) {
+    const source = el.dataset.source;
+    if (selectMode === 'single') {
+        // Single select: deselect others, toggle this one
+        if (selectedSources.includes(source)) {
+            selectedSources = [];
+        } else {
+            selectedSources = [source];
+        }
+        document.querySelectorAll('.source-chip').forEach(chip => {
+            chip.classList.toggle('selected', selectedSources.includes(chip.dataset.source));
+        });
+    } else {
+        // Multi select
+        el.classList.toggle('selected');
+        if (el.classList.contains('selected')) {
+            if (!selectedSources.includes(source)) selectedSources.push(source);
+        } else {
+            selectedSources = selectedSources.filter(s => s !== source);
+        }
+    }
+    currentPage = 1;
+    loadPosts();
+    savePreferences();
+}
+
+function savePreferences() {
+    fetch(API + '/api/preferences/sources', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({selected_sources: selectedSources, select_mode: selectMode})
+    });
+}
+
+// Load config
+async function loadConfig() {
+    const res = await fetch(API + '/api/config');
+    const cfg = await res.json();
+    document.getElementById('cfgInterval').value = cfg.interval_minutes || 60;
+    document.getElementById('cfgTargets').value = cfg.targets || '';
+    document.getElementById('cfgLimit').value = cfg.limit_per_target || 100;
+    document.getElementById('cfgImages').checked = !!cfg.fetch_images;
+    document.getElementById('cfgVideos').checked = !!cfg.fetch_videos;
+    document.getElementById('cfgComments').checked = !!cfg.fetch_comments;
+    const types = (cfg.post_types || 'text,image,video,gallery,link').split(',');
+    document.querySelectorAll('.checkbox-group input').forEach(cb => {
+        cb.checked = types.includes(cb.value);
+    });
+}
+
+async function saveConfig() {
+    const types = [];
+    document.querySelectorAll('.checkbox-group input:checked').forEach(cb => types.push(cb.value));
+    await fetch(API + '/api/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            interval_minutes: parseInt(document.getElementById('cfgInterval').value),
+            targets: document.getElementById('cfgTargets').value,
+            post_types: types.join(','),
+            fetch_images: document.getElementById('cfgImages').checked ? 1 : 0,
+            fetch_videos: document.getElementById('cfgVideos').checked ? 1 : 0,
+            fetch_comments: document.getElementById('cfgComments').checked ? 1 : 0,
+            limit_per_target: parseInt(document.getElementById('cfgLimit').value),
+        })
+    });
+}
+
+// Scrape control
+async function toggleScrape() {
+    await saveConfig();
+    if (!isRunning) {
+        await fetch(API + '/api/scrape/start', {method: 'POST'});
+    } else {
+        await fetch(API + '/api/scrape/stop', {method: 'POST'});
+    }
+    checkStatus();
+}
+
+async function checkStatus() {
+    const res = await fetch(API + '/api/scrape/status');
+    const data = await res.json();
+    isRunning = data.running;
+    const btn = document.getElementById('btnScrape');
+    const indicator = document.getElementById('statusIndicator');
+    if (isRunning) {
+        btn.textContent = '停止爬取';
+        btn.className = 'btn-start stop';
+        indicator.textContent = '● 爬取中: ' + (data.current_target || '...');
+    } else {
+        btn.textContent = '开始爬取';
+        btn.className = 'btn-start start';
+        indicator.textContent = '';
+    }
+}
+
+// Posts
+function toggleSort(field, order) {
+    if (sortBy === field && sortOrder === order) {
+        sortBy = 'scraped_at'; sortOrder = 'desc';
+    } else {
+        sortBy = field; sortOrder = order;
+    }
+    currentPage = 1;
+    loadPosts();
+}
+
+async function loadPosts() {
+    if (currentStatus === 'favorites') { loadFavorites(); return; }
+    // Restore table header for posts
+    document.getElementById('postsHead').innerHTML = `<tr>
+        <th>#</th><th>来源</th><th>标题</th><th>作者</th><th>发布时间</th><th>爬取时间</th>
+        <th>字数 <span class="sort-arrows" data-field="word_count"><span class="arrow-up">&#9650;</span><span class="arrow-down">&#9660;</span></span></th>
+        <th>点赞 <span class="sort-arrows" data-field="score"><span class="arrow-up">&#9650;</span><span class="arrow-down">&#9660;</span></span></th>
+        <th>评论 <span class="sort-arrows" data-field="num_comments"><span class="arrow-up">&#9650;</span><span class="arrow-down">&#9660;</span></span></th>
+        <th>操作</th>
+    </tr>`;
+    let url = API + `/api/posts?status=${currentStatus}&page=${currentPage}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+    if (selectedSources.length > 0 && currentStatus === 'pending') {
+        url += `&sources=${encodeURIComponent(selectedSources.join(','))}`;
+    }
+    if (searchKeyword) {
+        url += `&search=${encodeURIComponent(searchKeyword)}`;
+    }
+    const res = await fetch(url);
+    const data = await res.json();
+    currentPostsList = data.posts;
+    const tbody = document.getElementById('postsBody');
+    const offset = (currentPage - 1) * 20;
+
+    tbody.innerHTML = data.posts.map((p, i) => `
+        <tr onclick="showDetail(${p.id})" style="cursor:pointer" id="row-${p.id}">
+            <td>${offset + i + 1}</td>
+            <td>${esc(p.source)}</td>
+            <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</td>
+            <td>${esc(p.author)}</td>
+            <td>${formatTime(p.created_utc)}</td>
+            <td>${formatTime(p.scraped_at)}</td>
+            <td>${p.word_count || 0}</td>
+            <td>${p.score}</td>
+            <td>${p.num_comments}</td>
+            <td>${getActions(p)}</td>
+        </tr>
+    `).join('');
+
+    // Update badge
+    document.getElementById('count-' + currentStatus).textContent = data.total;
+    loadAllCounts();
+
+    // Pagination
+    const totalPages = Math.ceil(data.total / 15);
+    const pag = document.getElementById('pagination');
+    let html = '';
+    if (totalPages > 1) {
+        html += `<button ${currentPage<=1?'disabled':''} onclick="goPage(${currentPage-1})">上一页</button>`;
+        html += `<button disabled>${currentPage}/${totalPages}</button>`;
+        html += `<button ${currentPage>=totalPages?'disabled':''} onclick="goPage(${currentPage+1})">下一页</button>`;
+    }
+    pag.innerHTML = html;
+
+    // Highlight active sort arrow
+    document.querySelectorAll('.sort-arrows span').forEach(el => el.classList.remove('active'));
+    if (sortBy !== 'scraped_at') {
+        const arrows = document.querySelector(`.sort-arrows[data-field="${sortBy}"]`);
+        if (arrows) arrows.querySelector(sortOrder === 'asc' ? '.arrow-up' : '.arrow-down').classList.add('active');
+    }
+}
+
+function getActions(p) {
+    if (currentStatus === 'pending') {
+        return `<button class="btn btn-sync" onclick="event.stopPropagation();showDetail(${p.id}).then(()=>openFavModal())">收藏</button>
+                <button class="btn btn-delete" onclick="event.stopPropagation();doAction(${p.id},'delete')">删除</button>`;
+    }
+    return '';
+}
+
+async function doAction(id, action) {
+    await fetch(API + `/api/posts/${id}/${action}`, {method: 'POST'});
+    loadPosts();
+    if (currentPost && currentPost.id === id) closeDetail();
+}
+
+async function detailAction(action) {
+    if (!currentPost) return;
+    const currentId = currentPost.id;
+    const idx = currentPostsList.findIndex(p => p.id === currentId);
+    await fetch(API + `/api/posts/${currentId}/${action}`, {method: 'POST'});
+    await loadPosts();
+    // Show next post in list
+    if (currentPostsList.length > 0) {
+        const nextIdx = Math.min(idx, currentPostsList.length - 1);
+        showDetail(currentPostsList[nextIdx].id);
+    } else {
+        closeDetail();
+    }
+}
+
+function goPage(p) { currentPage = p; loadPosts(); }
+
+// Detail
+async function showDetail(id) {
+    const res = await fetch(API + `/api/posts/${id}`);
+    currentPost = await res.json();
+    document.getElementById('detailTitle').textContent = currentPost.title;
+    document.getElementById('detailMeta').innerHTML =
+        `<span>作者: ${esc(currentPost.author)}</span>
+         <span>点赞: ${currentPost.score}</span>
+         <span>评论: ${currentPost.num_comments}</span>
+         <span><a href="https://reddit.com${currentPost.permalink}" target="_blank">原文链接</a></span>`;
+    document.getElementById('detailBody').textContent = currentPost.selftext || '(无正文内容)';
+    document.getElementById('detailPanel').classList.add('open');
+    document.getElementById('btnFav').style.display = currentStatus === 'favorites' ? 'none' : '';
+    document.querySelectorAll('#postsBody tr').forEach(tr => tr.classList.remove('selected'));
+    const row = document.getElementById('row-' + id);
+    if (row) row.classList.add('selected');
+}
+
+function closeDetail() {
+    document.getElementById('detailPanel').classList.remove('open');
+    currentPost = null;
+}
+
+function copyPost() {
+    if (!currentPost) return;
+    const text = currentPost.title + '\n\n' + (currentPost.selftext || '');
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.btn-copy');
+        btn.textContent = '已拷贝!';
+        setTimeout(() => btn.textContent = '一键拷贝', 1500);
+    });
+}
+
+// Keyboard shortcuts for detail panel
+document.addEventListener('keydown', (e) => {
+    if (!currentPost) return;
+    const idx = currentPostsList.findIndex(p => p.id === currentPost.id);
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) showDetail(currentPostsList[idx - 1].id);
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (idx < currentPostsList.length - 1) showDetail(currentPostsList[idx + 1].id);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        detailAction('delete');
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        closeDetail();
+    } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        openFavModal();
+    }
+});
+
+// Load all tab counts
+async function loadAllCounts() {
+    const statuses = ['pending', 'deleted'];
+    for (const s of statuses) {
+        if (s === currentStatus) continue;
+        const res = await fetch(API + `/api/posts?status=${s}&page=1`);
+        const data = await res.json();
+        document.getElementById('count-' + s).textContent = data.total;
+    }
+    if (currentStatus !== 'favorites') loadFavCount();
+}
+
+// Logs
+async function loadLogs(page = 1) {
+    const res = await fetch(API + `/api/logs?page=${page}`);
+    const data = await res.json();
+    const container = document.getElementById('logsContainer');
+    container.innerHTML = data.logs.map(l => `
+        <div class="log-item">
+            <div>
+                <strong>${esc(l.target)}</strong>
+                <span style="color:#666;margin-left:12px">${formatTime(l.started_at)}</span>
+                ${l.ended_at ? '<span style="color:#666;margin-left:8px">- ' + formatTime(l.ended_at) + '</span>' : ''}
+                ${l.post_count ? '<span style="margin-left:12px">新增 ' + l.post_count + ' 条</span>' : ''}
+            </div>
+            <span class="log-status ${l.status}">${l.status}</span>
+        </div>
+    `).join('') || '<p style="color:#999;padding:20px">暂无日志</p>';
+
+    // Pagination
+    const totalPages = Math.ceil(data.total / 15);
+    const pag = document.getElementById('logsPagination');
+    let html = '';
+    if (totalPages > 1) {
+        html += `<button ${page<=1?'disabled':''} onclick="loadLogs(${page-1})">上一页</button>`;
+        html += `<button disabled>${page}/${totalPages}</button>`;
+        html += `<button ${page>=totalPages?'disabled':''} onclick="loadLogs(${page+1})">下一页</button>`;
+    }
+    pag.innerHTML = html;
+}
+
+// Favorites
+let allTags = [];
+let selectedFavTags = [];
+let favPage = 1;
+
+async function loadTags() {
+    const res = await fetch(API + '/api/tags');
+    const data = await res.json();
+    allTags = data.tags;
+}
+
+function renderFavTags() {
+    const container = document.getElementById('favTagChips');
+    container.innerHTML = allTags.map(t =>
+        `<span class="fav-tag ${selectedFavTags.includes(t.name)?'selected':''}" onclick="toggleFavTag('${esc(t.name)}')">${esc(t.name)}</span>`
+    ).join('');
+}
+
+function toggleFavTag(name) {
+    const idx = selectedFavTags.indexOf(name);
+    if (idx >= 0) selectedFavTags.splice(idx, 1);
+    else selectedFavTags.push(name);
+    renderFavTags();
+}
+
+async function openFavModal() {
+    if (!currentPost) return;
+    selectedFavTags = [];
+    await loadTags();
+    renderFavTags();
+    const modal = document.getElementById('favModal');
+    modal.style.display = 'flex';
+    document.getElementById('favTagInput').value = '';
+    document.getElementById('favTagInput').focus();
+}
+
+function closeFavModal() {
+    document.getElementById('favModal').style.display = 'none';
+}
+
+document.addEventListener('keydown', (e) => {
+    // Esc closes any visible modal
+    if (e.key === 'Escape') {
+        document.querySelectorAll('[data-modal]').forEach(m => m.style.display = 'none');
+        return;
+    }
+    const input = document.getElementById('favTagInput');
+    if (document.getElementById('favModal').style.display === 'flex' && e.target === input && e.key === 'Enter') {
+        e.preventDefault();
+        const name = input.value.trim();
+        if (!name) return;
+        // Add to allTags if not exists
+        if (!allTags.find(t => t.name === name)) {
+            fetch(API + '/api/tags', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name})});
+            allTags.push({id: 0, name, created_at: ''});
+        }
+        if (!selectedFavTags.includes(name)) selectedFavTags.push(name);
+        input.value = '';
+        renderFavTags();
+    }
+});
+
+async function confirmFavorite() {
+    if (!currentPost) return;
+    await fetch(API + '/api/favorites', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({post_id: currentPost.id, tags: selectedFavTags})
+    });
+    closeFavModal();
+    loadFavCount();
+}
+
+async function loadFavorites(page = 1) {
+    favPage = page;
+    let favUrl = API + `/api/favorites?page=${page}`;
+    if (searchKeyword) {
+        favUrl += `&search=${encodeURIComponent(searchKeyword)}`;
+    }
+    const res = await fetch(favUrl);
+    const data = await res.json();
+    document.getElementById('count-favorites').textContent = data.total;
+
+    // Swap table header for favorites
+    document.getElementById('postsHead').innerHTML = `<tr>
+        <th>#</th><th>来源</th><th>标题</th><th>作者</th><th>发布时间</th>
+        <th>字数</th><th>点赞</th><th>评论</th><th>标签</th><th>操作</th>
+    </tr>`;
+
+    const tbody = document.getElementById('postsBody');
+    const offset = (page - 1) * 15;
+    tbody.innerHTML = data.favorites.map((f, i) => `
+        <tr id="fav-row-${f.id}" onclick="showDetail(${f.post_id})" style="cursor:pointer">
+            <td>${offset + i + 1}</td>
+            <td>${esc(f.source)}</td>
+            <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.title)}</td>
+            <td>${esc(f.author)}</td>
+            <td>${formatTime(f.created_utc)}</td>
+            <td>${f.word_count || 0}</td>
+            <td>${f.score}</td>
+            <td>${f.num_comments}</td>
+            <td>${(f.tags || '').split(',').filter(t=>t).map(t => '<span style="display:inline-block;padding:2px 8px;background:#f0f0f0;border-radius:10px;font-size:12px;margin:2px;">' + esc(t) + '</span>').join('')}</td>
+            <td><span style="color:#e94560;cursor:pointer;" onclick="event.stopPropagation();deleteFav(${f.id})">删除</span></td>
+        </tr>
+    `).join('') || '<tr><td colspan="10" style="color:#999;padding:20px">暂无收藏</td></tr>';
+
+    // Pagination
+    const totalPages = Math.ceil(data.total / 15);
+    const pag = document.getElementById('pagination');
+    let html = '';
+    if (totalPages > 1) {
+        html += `<button ${page<=1?'disabled':''} onclick="loadFavorites(${page-1})">上一页</button>`;
+        html += `<button disabled>${page}/${totalPages}</button>`;
+        html += `<button ${page>=totalPages?'disabled':''} onclick="loadFavorites(${page+1})">下一页</button>`;
+    }
+    pag.innerHTML = html;
+}
+
+async function deleteFav(id) {
+    await fetch(API + `/api/favorites/${id}`, {method: 'DELETE'});
+    loadFavorites(favPage);
+}
+
+async function loadFavCount() {
+    const res = await fetch(API + '/api/favorites/count');
+    const data = await res.json();
+    document.getElementById('count-favorites').textContent = data.count;
+}
+
+// Utils
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function formatTime(t) {
+    if (!t) return '-';
+    try {
+        const d = new Date(t.includes('T') ? t : t * 1000);
+        return d.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    } catch { return t; }
+}
+
+// Init
+document.addEventListener('click', (e) => {
+    const arrow = e.target.closest('.sort-arrows .arrow-up, .sort-arrows .arrow-down');
+    if (!arrow) return;
+    e.stopPropagation();
+    const field = arrow.parentElement.dataset.field;
+    const order = arrow.classList.contains('arrow-up') ? 'asc' : 'desc';
+    toggleSort(field, order);
+});
+loadSources().then(() => loadPosts());
+updateSourceFilterVisibility();
+checkStatus();
+setInterval(checkStatus, 5000);
+</script>
+</body>
+</html>
