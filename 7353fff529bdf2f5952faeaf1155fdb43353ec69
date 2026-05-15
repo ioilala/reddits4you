@@ -1,0 +1,162 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "7353fff529bdf2f5952faeaf1155fdb43353ec69",
+  "prompts": {
+    "de482fbea5e0bbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa449602-4325-48cc-9bc1-d7664538179c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "tinycat",
+      "messages": [],
+      "total_additions": 6380,
+      "total_deletions": 60,
+      "accepted_lines": 6380,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "reddit-universal-scraper/analytics/subreddit_stats.py": {
+          "additions": 243,
+          "accepted_lines": 243
+        },
+        "reddit-universal-scraper/api/server.py": {
+          "additions": 244,
+          "accepted_lines": 244
+        },
+        "reddit-universal-scraper/export/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/alerts/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/docs/INTEGRATION.md": {
+          "additions": 93,
+          "accepted_lines": 93
+        },
+        "reddit-universal-scraper/README.md": {
+          "additions": 335,
+          "accepted_lines": 335
+        },
+        "reddit-universal-scraper/export/database.py": {
+          "additions": 642,
+          "accepted_lines": 642
+        },
+        "reddit-universal-scraper/.gitignore": {
+          "additions": 3,
+          "accepted_lines": 3
+        },
+        "reddit-universal-scraper/scheduler/cron.py": {
+          "additions": 215,
+          "accepted_lines": 215
+        },
+        "reddit-universal-scraper/analytics/sentiment.py": {
+          "additions": 236,
+          "accepted_lines": 236
+        },
+        "reddit-universal-scraper/export/cloud.py": {
+          "additions": 313,
+          "accepted_lines": 313
+        },
+        "reddit-universal-scraper/main.py": {
+          "additions": 879,
+          "accepted_lines": 879
+        },
+        "reddit-universal-scraper/plugins/deduplicator.py": {
+          "additions": 45,
+          "accepted_lines": 45
+        },
+        "reddit-universal-scraper/LICENSE": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "reddit-universal-scraper/dashboard/__init__.py": {
+          "additions": 1,
+          "accepted_lines": 1
+        },
+        "reddit-universal-scraper/config.py": {
+          "additions": 58,
+          "accepted_lines": 58
+        },
+        "reddit-universal-scraper/analytics/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/scraper/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/.github/workflows/docker-publish.yml": {
+          "additions": 60,
+          "accepted_lines": 60
+        },
+        "reddit-universal-scraper/plugins/sentiment_tagger.py": {
+          "additions": 45,
+          "accepted_lines": 45
+        },
+        "reddit-universal-scraper/search/query.py": {
+          "additions": 220,
+          "accepted_lines": 220
+        },
+        "reddit-universal-scraper/docs/BLOG.md": {
+          "additions": 536,
+          "accepted_lines": 536
+        },
+        "reddit-universal-scraper/docker-compose.yml": {
+          "additions": 98,
+          "accepted_lines": 98
+        },
+        "reddit-universal-scraper/dashboard/app.py": {
+          "additions": 952,
+          "accepted_lines": 952
+        },
+        "reddit-universal-scraper/scheduler/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/export/parquet.py": {
+          "additions": 181,
+          "accepted_lines": 181
+        },
+        "reddit-universal-scraper/alerts/notifications.py": {
+          "additions": 208,
+          "accepted_lines": 208
+        },
+        "reddit-universal-scraper": {
+          "deletions": 60
+        },
+        "reddit-universal-scraper/search/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/scraper/async_scraper.py": {
+          "additions": 490,
+          "accepted_lines": 490
+        },
+        "reddit-universal-scraper/plugins/keyword_extractor.py": {
+          "additions": 35,
+          "accepted_lines": 35
+        },
+        "reddit-universal-scraper/api/__init__.py": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "reddit-universal-scraper/requirements.txt": {
+          "additions": 18,
+          "accepted_lines": 18
+        },
+        "reddit-universal-scraper/plugins/__init__.py": {
+          "additions": 149,
+          "accepted_lines": 149
+        },
+        "reddit-universal-scraper/Dockerfile": {
+          "additions": 46,
+          "accepted_lines": 46
+        }
+      }
+    }
+  }
+}
